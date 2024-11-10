@@ -26,6 +26,7 @@ const initialState = {
   points: 0,
   highscore: 0,
   secondsRemaining: null,
+  ans:0
 };
 
 function reducer(state, action) {
@@ -49,7 +50,6 @@ function reducer(state, action) {
       };
     case "newAnswer":
       const question = state.questions.at(state.index);
-
       return {
         ...state,
         answer: action.payload,
@@ -57,6 +57,7 @@ function reducer(state, action) {
           action.payload === question.correctOption
             ? state.points + question.points
             : state.points,
+        ans: action.payload==question.correctOption?state.ans+1:state.ans,
       };
     case "nextQuestion":
       return { ...state, index: state.index + 1, answer: null };
@@ -66,6 +67,7 @@ function reducer(state, action) {
         status: "finished",
         highscore:
           state.points > state.highscore ? state.points : state.highscore,
+        ans: state.ans,
       };
     case "restart":
       return { ...initialState, questions: state.questions, status: "ready" };
@@ -92,25 +94,31 @@ export default function App() {
   const [
     { questions, status, index, answer, points, highscore, secondsRemaining },
     dispatch,
-  ] = useReducer(reducer, initialState);
-  const [cat,setCat]=useState("Linguistics");
+  ] = useReducer(reducer, initialState);  
+const [cat,setCat]=useState("");
 const handleChange = (event) => {
 setCat(event.target.value);
 };
-  let categories=["Literature","Philosophy","Biology","History","Geography","Movies","Music","Literature","Computer Science","Mathematics"];
+const [timed,setTimed]=useState(false);
+const handleTimed = (event) => setTimed(event.target.checked);
   const numQuestions = questions.length;
   const maxPossiblePoints = questions.reduce(
     (prev, cur) => prev + cur.points,
     0
   );
-
+let v;
+if(cat.length>0){
+  v=(item)=>item.category==cat;
+} else {
+  v=(item)=>item;
+}
   useEffect(function () {
     fetch("https://raw.githubusercontent.com/JBreitenbr/psychic-meme/refs/heads/main/questions.json")
       .then((res) => res.json())
       .then((data) =>
         dispatch({
           type: "dataReceived",
-          payload: shuffle(data["questions"].filter((item)=>item.category==cat)).slice(0,15),
+          payload: /*shuffle(data["questions"].filter((item)=>item.category==cat)).slice(0,15)*/shuffle(data["questions"]).filter(v).slice(0,10)
         })
       )
       .catch((err) => dispatch({ type: "dataFailed" }));
@@ -118,42 +126,44 @@ setCat(event.target.value);
 
   return (
     <div className="wrapper">
-      <div className="app"><select value={cat} onChange={handleChange} style={{color:"navy"}}><option style={{color:"navy"}}>Select a category</option>{categories.map(item=><option  value={item}>{item}</option>)}</select>
+      <div className="app">
         <div className="headerWrapper">
           <Header />
 
-          <Main>
+         {/* <Main>*/}
             {status === "loading" && <Loader />}
             {status === "error" && <Error />}
             {status === "ready" && (
-             <StartScreen numQuestions={numQuestions} dispatch={dispatch} />
+            <><StartScreen numQuestions={numQuestions} dispatch={dispatch} cat={cat} timed={timed} handleChange={handleChange} handleTimed={handleTimed}/>{/*<select value={cat} onChange={handleChange} style={{color:"navy"}}><option style={{color:"navy"}}>Select a category</option>{categories.map(item=><option  value={item}>{item}</option>)}</select>*/}</>
             )}{" "}
             {status === "active" && (
               <>
-                <Progress
+                {/*<Progress
                   index={index}
                   numQuestions={numQuestions}
                   points={points}
                   maxPossiblePoints={maxPossiblePoints}
                   answer={answer}
-                />
+                />*/}<h2>
+        Question <strong>{index + 1}</strong> / {numQuestions}
+      </h2>
                 <Question
                   question={questions[index]}
                   dispatch={dispatch}
                   answer={answer}
                 />
-                <Footer>
-                  <Timer
+              { /* <Footer> */}
+              {timed? <Timer
                     dispatch={dispatch}
                     secondsRemaining={secondsRemaining}
-                  />
+                  />:null}
                   <NextButton
                     dispatch={dispatch}
                     answer={answer}
                     numQuestions={numQuestions}
                     index={index}
                   />
-                </Footer>
+                {/* </Footer>*/}
               </>
             )}
             {status === "finished" && (
@@ -164,7 +174,7 @@ setCat(event.target.value);
                 dispatch={dispatch}
               />
             )}
-          </Main>
+          { /* </Main> */}
         </div>
       </div>
     </div>
